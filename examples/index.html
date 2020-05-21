@@ -1,0 +1,596 @@
+<!doctype html>
+
+<head>
+  <script src="template.v2.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf8">
+
+  <script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+
+  <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      tex2jax: {
+        inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+        processEscapes: true
+      }
+    });
+  </script>
+  <script type="text/javascript" async
+    src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML">
+  </script>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
+
+  <link rel="stylesheet" type="text/css" href="css/style.css">
+  <link rel="stylesheet" type="text/css" href="css/bayes_opt_style.css">
+  <script defer src="js/hider.js"></script>
+  \(\newcommand{\coloneqq}{\mathrel{\mathop:}\mathrel{\mkern-1.2mu}=}\)<!--taken from https://math.meta.stackexchange.com/a/25672 -->
+
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-lite@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+</head>
+
+<body>
+  <distill-header></distill-header>
+  <d-front-matter><!-- TODO: date -->
+    <script id='distill-front-matter' type="text/json">{
+    "title": "Tying Epidemic Models together",
+    "description": "The Relation between the Compartmental Models and Hawkes Processes.",
+    "published": "MMM DD, YYYY",
+    "authors": [
+      {
+        "author":"Aleksandar Karakas",
+        "authorURL":"https://yogabonito.github.io/blog/",
+        "affiliations": [{"name": "Institute of Interactive Systems and Data Science, TU Graz",
+                          "url": "https://www.tugraz.at/institute/isds/home/"}]
+      },
+      {
+        "author":"Tiago Santos",
+        "affiliations": [{"name": "Institute of Interactive Systems and Data Science, TU Graz",
+                          "url": "https://www.tugraz.at/institute/isds/home/"}]
+      },
+      {
+        "author":"Denis Helic",
+        "affiliations": [{"name": "Institute of Interactive Systems and Data Science, TU Graz",
+                          "url": "https://www.tugraz.at/institute/isds/home/"}]
+      }
+    ],
+    "mathjax": {
+      "delimiters": [
+        {"left": "$", "right": "$", "display": false}
+      ]
+    }
+  }</script>
+  </d-front-matter>
+
+  <d-title>
+    <p>TODO: short abstract</p>
+  </d-title>
+  <d-byline></d-byline>
+  <d-article>
+    <a class="marker" href="#section-1" id="section-1"><span>1</span></a>
+    <h2>Introduction</h2>
+    <p>
+      Since their introduction in the 1970s, Hawkes processes have been successfully applied in many different fields,
+      including seismology, finance, and information science. Alan G. Hawkes also considered his class of stochastic
+      processes "a possible epidemic model in large populations"<d-cite bibtex-key="hawkes"></d-cite>.</p>
+    <p>
+      However, a model assuming an infinitely large population is often not suitable when modeling the spread of
+      diseases. That is why many researchers preferred compartmental epidemic models (such as the SIR or SEIR model) to
+      Hawkes processes.</p>
+    <p>
+      Only recently, it has been shown that there is a link between Hawkes-like processes and the SIR compartmental
+      model. As Rizoiu et al. put it, "[t]his is significant, as it indicates that tools developed for one approach can
+      be applied to the other."<d-cite bibtex-key="rizoiu"></d-cite> However, this link is restricted to the SIR
+      compartmental model. As this model lacks the capability to model a latent period, many researchers turn to more
+      complex models such as the SEIR model and variants thereof. This is especially true for diffusion analyses in the
+      current Covid-19 crisis.</p>
+    <p>
+      We have discovered a link between the SEIR model and Hawkes-like processes.<d-cite bibtex-key="karakas"></d-cite>
+      In this blog post, we explain it briefly and give an overview of all the models mentioned so far.</p>
+    <p>
+      But before we dive into the theory, let&apos;s get a feel of the models we will talk about. The following plot shows
+      four subplots, each containing the total number of infections (y-axis) that occured until a certain day (x-axis)
+      in a population of 10 thousand people using one specific simulation model. When you hover over the bars, you will
+      notice that many infection counts are not integers; that is because they are calculated as the mean of many
+      simulations. Experiment with the sliders below the plot and see how they affect the spread of a disease.</p>
+
+    <p id="altair-viz-7ba8f47b3ebf43d884e9beeb63885233" class="l-middle interactive-plot"></p>
+    <script type="text/javascript">
+      (function(spec, embedOpt){
+        let outputDiv = document.currentScript.previousElementSibling;
+        if (outputDiv.id !== "altair-viz-7ba8f47b3ebf43d884e9beeb63885233") {
+          outputDiv = document.getElementById("altair-viz-7ba8f47b3ebf43d884e9beeb63885233");
+        }
+        const paths = {
+          "vega": "https://cdn.jsdelivr.net/npm//vega@5?noext",
+          "vega-lib": "https://cdn.jsdelivr.net/npm//vega-lib?noext",
+          "vega-lite": "https://cdn.jsdelivr.net/npm//vega-lite@4.8.1?noext",
+          "vega-embed": "https://cdn.jsdelivr.net/npm//vega-embed@6?noext",
+        };
+
+        function loadScript(lib) {
+          return new Promise(function(resolve, reject) {
+            var s = document.createElement('script');
+            s.src = paths[lib];
+            s.async = true;
+            s.onload = () => resolve(paths[lib]);
+            s.onerror = () => reject(`Error loading script: ${paths[lib]}`);
+            document.getElementsByTagName("head")[0].appendChild(s);
+          });
+        }
+
+        function showError(err) {
+          outputDiv.innerHTML = `<div class="error" style="color:red;">${err}</div>`;
+          throw err;
+        }
+
+        function displayChart(vegaEmbed) {
+          vegaEmbed(outputDiv, spec, embedOpt)
+            .catch(err => showError(`Javascript Error: ${err.message}<br>This usually means there's a typo in your chart specification. See the javascript console for the full traceback.`));
+        }
+
+        if(typeof define === "function" && define.amd) {
+          requirejs.config({paths});
+          require(["vega-embed"], displayChart, err => showError(`Error loading script: ${err.message}`));
+        } else if (typeof vegaEmbed === "function") {
+          displayChart(vegaEmbed);
+        } else {
+          loadScript("vega")
+            .then(() => loadScript("vega-lite"))
+            .then(() => loadScript("vega-embed"))
+            .catch(showError)
+            .then(() => displayChart(vegaEmbed));
+        }
+    /*
+    console.log("start");
+    console.log(document.getElementsByTagName("input"));
+    for (el of document.getElementsByTagName("input")) {
+      console.log(el.style.width);
+      el.style.width = "30%";
+      el.style.display = "inline";
+    }
+    console.log("end");
+    */
+      })({"config": {"view": {"continuousWidth": 400, "continuousHeight": 300}}, "vconcat": [{"hconcat": [{"data": {"url": "https://raw.githubusercontent.com/yogabonito/blog/master/_notebooks/fig/cumulative_infections/sir.json"}, "mark": "bar", "encoding": {"tooltip": [{"type": "quantitative", "field": "day"}, {"type": "quantitative", "field": "cumulative infections"}], "x": {"type": "quantitative", "field": "day", "scale": {"domain": [1, 46]}}, "y": {"type": "quantitative", "field": "cumulative infections", "scale": {"domain": [0, 10000]}}}, "selection": {"parameter_gamma": {"type": "single", "fields": ["gamma"], "bind": {"gamma": {"input": "range", "max": 1, "min": 0.1, "name": "recovery rate \u03b3 ", "step": 0.1}}, "init": {"gamma": 0.1}}, "parameter_beta": {"type": "single", "fields": ["beta"], "bind": {"beta": {"input": "range", "max": 1.4, "min": 0.4, "name": "infection rate \u03b2 ", "step": 0.2}}, "init": {"beta": 1}}}, "title": "SIR", "transform": [{"filter": {"selection": "parameter_gamma"}}, {"filter": {"selection": "parameter_beta"}}]}, {"data": {"url": "https://raw.githubusercontent.com/yogabonito/blog/master/_notebooks/fig/cumulative_infections/seir.json"}, "mark": "bar", "encoding": {"tooltip": [{"type": "quantitative", "field": "day"}, {"type": "quantitative", "field": "cumulative infections"}], "x": {"type": "quantitative", "field": "day", "scale": {"domain": [1, 46]}}, "y": {"type": "quantitative", "field": "cumulative infections", "scale": {"domain": [0, 10000]}}}, "selection": {"parameter_gamma": {"type": "single", "fields": ["gamma"], "bind": {"gamma": {"input": "range", "max": 1, "min": 0.1, "name": "recovery rate \u03b3 ", "step": 0.1}}, "init": {"gamma": 0.1}}, "parameter_beta": {"type": "single", "fields": ["beta"], "bind": {"beta": {"input": "range", "max": 1.4, "min": 0.4, "name": "infection rate \u03b2 ", "step": 0.2}}, "init": {"beta": 1}}, "parameter_sigma": {"type": "single", "fields": ["sigma"], "bind": {"sigma": {"input": "range", "max": 1, "min": 0.1, "name": "incubation rate \u03c3 ", "step": 0.1}}, "init": {"sigma": 0.3}}}, "title": "SEIR", "transform": [{"filter": {"selection": "parameter_gamma"}}, {"filter": {"selection": "parameter_beta"}}, {"filter": {"selection": "parameter_sigma"}}]}]}, {"hconcat": [{"data": {"url": "https://raw.githubusercontent.com/yogabonito/blog/master/_notebooks/fig/cumulative_infections/exp_hawkesn.json"}, "mark": "bar", "encoding": {"tooltip": [{"type": "quantitative", "field": "day"}, {"type": "quantitative", "field": "cumulative infections"}], "x": {"type": "quantitative", "field": "day", "scale": {"domain": [1, 46]}}, "y": {"type": "quantitative", "field": "cumulative infections", "scale": {"domain": [0, 10000]}}}, "selection": {"parameter_gamma": {"type": "single", "fields": ["gamma"], "bind": {"gamma": {"input": "range", "max": 1, "min": 0.1, "name": "recovery rate \u03b3 ", "step": 0.1}}, "init": {"gamma": 0.1}}, "parameter_beta": {"type": "single", "fields": ["beta"], "bind": {"beta": {"input": "range", "max": 1.4, "min": 0.4, "name": "infection rate \u03b2 ", "step": 0.2}}, "init": {"beta": 1}}}, "title": "HawkesN process with exponential kernel", "transform": [{"filter": {"selection": "parameter_gamma"}}, {"filter": {"selection": "parameter_beta"}}]}, {"data": {"url": "https://raw.githubusercontent.com/yogabonito/blog/master/_notebooks/fig/cumulative_infections/hypoexp_and_erlang_hawkesn.json"}, "mark": "bar", "encoding": {"tooltip": [{"type": "quantitative", "field": "day"}, {"type": "quantitative", "field": "cumulative infections"}], "x": {"type": "quantitative", "field": "day", "scale": {"domain": [1, 46]}}, "y": {"type": "quantitative", "field": "cumulative infections", "scale": {"domain": [0, 10000]}}}, "selection": {"parameter_gamma": {"type": "single", "fields": ["gamma"], "bind": {"gamma": {"input": "range", "max": 1, "min": 0.1, "name": "recovery rate \u03b3 ", "step": 0.1}}, "init": {"gamma": 0.1}}, "parameter_beta": {"type": "single", "fields": ["beta"], "bind": {"beta": {"input": "range", "max": 1.4, "min": 0.4, "name": "infection rate \u03b2 ", "step": 0.2}}, "init": {"beta": 1}}, "parameter_sigma": {"type": "single", "fields": ["sigma"], "bind": {"sigma": {"input": "range", "max": 1, "min": 0.1, "name": "incubation rate \u03c3 ", "step": 0.1}}, "init": {"sigma": 0.3}}}, "title": "HawkesN process with hypoexponential/Erlang kernel", "transform": [{"filter": {"selection": "parameter_gamma"}}, {"filter": {"selection": "parameter_beta"}}, {"filter": {"selection": "parameter_sigma"}}]}]}], "$schema": "https://vega.github.io/schema/vega-lite/v4.8.1.json"}, {"mode": "vega-lite"});
+    </script>
+
+    <p>
+      Comparing the subplots, we notice three things:</p>
+    <p class="note">
+      <span class="glyphicon glyphicon-info-sign"></span> <span class="info-box-start">Note:</span> The two subplots on
+      the left look similar. This is a consequence of the finding of Rizoiu et al. that we mentioned above: There is a
+      link between the SIR model and Hawkes-like processes.</p>
+    <p class="note">
+      <span class="glyphicon glyphicon-info-sign"></span> <span class="info-box-start">Note:</span> The two subplots on
+      the right look similar. This is a consequence of our finding: There is a link between the SEIR model and
+      Hawkes-like processes.</p>
+    <p class="important">
+      <span class="glyphicon glyphicon-flash"></span> <span class="info-box-start">Important:</span> The subplots on the
+      left and on the right are <em>very</em> different! Also note, that you can adjust the latency in the models
+      plotted on the right (higher values for $\sigma$ implying less latency). The models on the left, however, are not
+      capable of modeling latency<d-footnote>In epidemiology there are two important latency-related time spans. The
+      <em>latent period</em> is defined as the
+      "[t]ime period between infection and onset of infectiousness"<d-cite bibtex-key="vynnycky"></d-cite>,
+      whereas the <em>incubation period</em> is
+      "[t]he time period between infection and onset of clinical symptoms"<d-cite bibtex-key="vynnycky"></d-cite>.
+      So while the latent period and the incubation period are related, they are not necessarily the same. As our goal
+      is to model the spread of a disease, we are more interested in the latent period than the incubation
+      period.</d-footnote>, which is inherent in many diseases. This
+      underlines the importance of extending the link found by Rizoiu et al. to other compartmental models.</p>
+
+    <a class="marker" href="#section-2" id="section-2"><span>2</span></a>
+    <h2>Hawkes Processes</h2>
+    <p>
+      A Hawkes process is a type of counting process. A counting process counts events. These events can, for example,
+      be infections (in epidemiology) or earthquakes (in seismology). Whenever an event occurs, the counting process
+      experiences a jump of size $1$. Let&apos;s have a look at a sample path of a Hawkes process $N_t$ in the following
+      figure (the blue line).</p>
+    <p>
+      <img src="img/hawkes_sample_path_with_conditional_intensity.svg" alt="sample Hawkes process with conditional intensity" /></p>
+    <p>
+      You will notice that its jumps are not evenly distributed over the observed time interval $[0, 60]$.
+      Why is that?</p>
+    <p>
+      It&apos;s because the behavior of $N_t$ is dictated by its so-called conditional intensity $\lambda_t$ (the orange
+        line). Whenever $\lambda_t$ is high we have a high probability of events. A low $\lambda_t$, on the other hand,
+        leads to fewer jumps in $N_t$. This property is valid for all counting processes.</p>
+    <p>
+      What makes Hawkes processes so special is that their conditional intensity $\lambda_t$ again depends on the
+      counting process. In the figure above we see that the jumps in $N_t$ also increase the conditional intensity.</p>
+    <p>
+      In general, the conditional intensity of a Hawkes process
+      <a href="https://mathworld.wolfram.com/HawkesProcess.html">has the form</a>
+      \begin{align}
+      \lambda_t
+      = \mu(t) + \sum\limits_{t_j &lt; t} \nu(t-t_j)
+      ,
+      \end{align}
+      where $t_j$ is an event time and $\mu(t)$ as well as $\nu(t-t_j)$ are both $\geq 0$.
+      We call $\mu(t)$ the <em>background intensity</em>. It is independent of $N_t$.</p>
+
+    <p>$\nu(t - t_j)$, on the other hand, depends on $t_j$ and thus on the history of the counting process $N_t$. We
+      call $\nu$ the <em>kernel</em> of the Hawkes process.</p>
+
+    <p>
+      In the figure above, $\mu(t) = \mu$ was constant and $\nu$ was an exponential kernel, this means
+      \begin{align} \label{exphawkes}
+      \lambda_t
+      = \mu
+      +
+      \sum\limits_{t_j < t} \kappa \theta \text{e}^{-\theta (t - t_j)}.
+      \end{align}</p>
+
+    <p>Here, $\kappa$ is called the <em>scale</em> parameter and $\theta$ is called the <em>decay</em> parameter. You
+      may notice that this kernel equals the density of the exponential distribution with parameter $\theta$ scaled by
+      the parameter $\kappa$.</p>
+
+    <p class="important">
+      <span class="glyphicon glyphicon-flash"></span> <span class="info-box-start">Important:</span>
+      The exponential kernel leads to immediate jumps in $\lambda_t$ when an
+      event occurs. When modeling infections, this means that an infection immediately increases the
+      probability of further infections. This also means, that there is no way of taking a latent period into
+      account.</p>
+
+    <p>
+      We will address this issue below. But first, let&apos;s head to the other class of models we discuss in this
+      post.</p>
+
+    <a class="marker" href="#section-3" id="section-3"><span>3</span></a>
+    <h2>Compartmental Epidemic Models</h2>
+
+    <a class="marker" href="#section-3.1" id="section-3.1"><span>3.1</span></a>
+    <h3>The SIR Model</h3>
+
+    <a class="marker" href="#section-3.1.1" id="section-3.1.1"><span>3.1.1</span></a>
+    <h4>Overview</h4>
+
+    <p>Compartmental epidemic models (such as SIR and SEIR) model the spread of a disease within some population of size
+      $N$ by dividing this population into groups (so-called compartments). In the SIR model these groups are called</p>
+    <ul>
+      <li>S (group of all <em>susceptibles</em>),</li>
+      <li>I (group of all <em>infected</em>), and</li>
+      <li>R (group of all <em>recovered</em>).</li>
+    </ul>
+
+    <p>
+      Susceptibles are healthy. After becoming infected, they move to compartment I. After some time infected people
+      recover from a disease and hence move to compartment R. The possible transitions between compartments are outlined
+      in the following figure.</p>
+
+    <p><img src="img/flowcharts/sir.svg" alt="SIR model"></p>
+
+    <p>
+      The exact laws that govern the rates at wich people transition from one compartment to the next can be expressed
+      in various ways. In the so-called <em>Continuous Time Markov Chain SIR</em> (CTMC-SIR) model this is achieved via
+      <em>infinitesimal transition probabilities</em>. These probabilities govern the three stochastic processes $S_t$,
+      $I_t$ and $R_t$, which represent the number of people in the respective compartment at time $t$.</p>
+
+    <div id="info-box-probabilities" class="collapsible l-middle"><h5>A closer look at the CTMC-SIR Model</h5> <div class="collapsible-indicator"></div></div>
+      <div class="content l-middle">
+        <p>
+          It turns out that it suffices to model only two of the three stochastic processes we have just defined.<!--, as the
+          third can be reconstructed using the other two.-->
+          Furthermore, we can focus on counting processes. $R_t$ is a counting process, counting the recovery events.
+          $C_t \coloneqq I_t + R_t$ is also a counting process, counting the infections that took place until time
+          $t$. Using these two processes, we can always reconstruct the two processes $S_t = N - C_t$ and
+          $I_t = C_t - R_t$.</p>
+        <p>
+          According to Allen<d-cite bibtex-key="allen"></d-cite>, the CTMC-SIR model is characterized by the
+          equations</p>
+        <p>
+          \begin{align}
+            p_{(c+1, r), (c, r)}(\Delta t) &= \beta \frac{S_t}{N} I_t \Delta t + o(\Delta t) \text{ and} \label{eq:p-infection}\\
+            p_{(c, r+1), (c, r)}(\Delta t) &= \gamma I_t \Delta t + o(\Delta t) \label{eq:p-recovery}\\
+            \label{eq:p-stay}
+          \end{align}
+          where $p_{(c+j, r+k), (c, r)}(\Delta t)$ is short hand for
+          \begin{align}\label{eq:sir-p-abbrev}
+             \mathbb{P}((C_{t+\Delta t}, R_{t+\Delta t}) = (c+j, r+k) | (C_t, R_t) = (c, r)).
+          \end{align}
+        </p>
+        <p>
+          This means that the equations \eqref{eq:p-infection} and \eqref{eq:p-recovery} give the probabilities of an
+          infection and a recovery within a short period of time, respectively. The probability that neither an
+          infection nor a recovery happens within a period of length $\Delta t$ is
+          $1 - p_{(c+1, r), (c, r)}(\Delta t) - p_{(c, r+1), (c, r)}(\Delta t)$.</p>
+        <p>
+          As $C_t$ and $R_t$ are counting processes, they have a conditional intensity. According to
+          Aalen et al.<d-cite bibtex-key="aalen"></d-cite> the conditional intensity of a counting process $N_t$ is
+          defined as
+          \begin{align}\label{eq:la-as-lim-p}
+            \lambda_t = \lim\limits_{\Delta t \downarrow 0} \frac{\mathbb{P}[N_{t + \Delta t} = N_t + 1 | \mathcal{F}_t]}{\Delta t},
+          \end{align}
+          where $\mathcal{F}_t$ is the history of the process $N_t$.
+          Hence, we can easily obtain the conditional intensity of the processes $C_t$ and $R_t$. It is
+          $\beta \frac{S_t}{N} I_t$ and $\gamma I_t$, respectively.
+          </p>
+      </div>
+
+    <p>
+      Having defined $S_t$, $I_t$ and $R_t$, we are now able to establish a link between the SIR model and Hawkes
+      processes by finding similarities in their conditional intensities.</p>
+
+
+
+    <a class="marker" href="#section-3.1.2" id="section-3.1.2"><span>3.1.2</span></a>
+    <h4>The link to Hawkes processes</h4>
+
+    <p>
+      How does a conditional intensity look like in the SIR model? This depends on which process in this model we are
+      considering. As we are interested in infections we might be tempted to choose the process $I_t$. However, $I_t$ is
+      not a counting process, so we cannot compute a conditional intensity. (A counting process counts and thus, it is
+
+      monotonically increasing, but $I_t$ decreases when people transition from I to R.)</p>
+
+    <p>
+      We can solve this issue by choosing the process $I_t + R_t$. This represents a counting process, which counts all
+      infections that have occurred until time $t$. We have derived its conditional intensity
+      $\lambda_t^{SIR} = \beta \frac{S_t}{N} I_t$ in the <a href="#info-box-probabilities">info box above</a>.</p>
+
+    <p>
+      Unfortunately, this result is not directly comparable to the conditional intensity of a Hawkes process. This is
+      because a Hawkes process can only model infections, whereas the SIR model also contains recoveries as events.
+      Therefore, Rizoiu et al. calculated an expected value, integrating over the recovery times, which are not
+      observable in the Hawkes process. If we call the set of all recovery times $\mathcal{T}$, then the main result of
+      Rizoiu et al. is
+      \begin{align} \label{sirhawkesn}
+      \mathbb{E}_{\mathcal{T}} \left(  \lambda_t^{SIR} \right)
+      = \left( 1 - \frac{I_t + R_t}{N} \right)
+      \sum\limits_{t_j &lt; t} \beta \text{e}^{-\gamma (t - t_j)},
+      \end{align}
+      where $\beta$ and $\gamma$ are the parameters of the SIR model. (They also show up in the infinitesimal transition
+      probabilities of the model as shown in the <a href="#info-box-probabilities">info box above</a>.) $\beta$ is
+      governing the rate at which infections take place, whereas $\gamma$ determines how fast people recover.</p>
+
+    <p>
+      Now this looks pretty much like the conditional intensity of a Hawkes process with exponential kernel! To see this
+      more easily, just set $\mu = 0$,
+      \begin{align}\label{eq:translate-beta}
+      \kappa \theta = \beta,
+      \end{align}
+      and
+      \begin{align}\label{eq:translate-gamma}
+      \theta = \gamma
+      \end{align}
+      in equation $\eqref{exphawkes}$ and compare it to $\eqref{sirhawkesn}$.
+      Now the only difference is the factor in front of the sum!</p>
+
+    <p>
+      To eliminate this last difference between the two models, Rizoiu et al. defined the HawkesN process. This process
+      is defined by its conditional intensity, which is the same as that of a Hawkes process, but without the background
+      intensity $\mu(t)$ and with the additional factor $(1-N_t/N)$, where $N_t$ denotes the HawkesN process at time
+
+    $t$. So compared to a Hawkes process, the HawkesN process lacks the parameter $\mu(t)$, but features the
+    additional parameter $N$, which can be interpreted as the population&apos;s size.</p>
+
+    <p>
+      This additional factor in the conditional intensity – let&apos;s call it <em>HawkesN factor</em> – has an
+      important effect. As is the case with the Hawkes process, infections tend to increase the conditional intensity of
+      the HawkesN process. However, as the number of events rises, this increasing effect declines for the HawkesN
+      process and eventually, further events can even have a decreasing effect, since the factor in front of the sum
+      decreases.</p>
+
+    <p>
+      With diseases we make similar observations. At first, infections increase the probability of further infections.
+      However, as more and more people become infected, the number of susceptibles declines and this lowers the
+      probability of further infections, as there are fewer people left who can become infected.</p>
+
+    <p class="note">
+      <span class="glyphicon glyphicon-info-sign"></span> <span class="info-box-start">Note:</span> Using the link found
+      by Rizoiu et al. we can translate an SIR model easily into a HawkesN process and vice versa using the equations
+      \eqref{eq:translate-beta} and \eqref{eq:translate-gamma}. This allows one, for example, to estimate model
+      parameters in one model and then make predictions using the
+      other model.
+    </p>
+
+    <a class="marker" href="#section-3.2" id="section-3.2"><span>3.2</span></a>
+    <h3>The SEIR Model</h3>
+
+    <a class="marker" href="#section-3.2.1" id="section-3.2.1"><span>3.2.1</span></a>
+    <h4>Overview</h4>
+
+    <p>
+      The SEIR model is a generalization of the SIR model, adding a compartment between S and I. This compartment is
+      called E, which stands for <em>exposed</em>. Members of this group are infected, but are not able to infect others
+      yet. After some time, people move on to compartment I, which means that they become infectious. The states and
+      possible transitions are summarized in the following figure.</p>
+
+    <p><img src="./img/flowcharts/seir.svg" alt="SEIR model"></p>
+
+    <p>
+      The additional compartment allows for modeling a latent period – a key characteristic of many infectious
+      diseases. The duration of the latent period – that is the time a person spends in compartment E – depends on the
+      incubation rate $\sigma$. The lower the value of $\sigma$, the longer the latent period. You can see this effect in
+      the <a href="#altair-viz-7ba8f47b3ebf43d884e9beeb63885233">interactive chart above</a>; just move the slider for
+      $\sigma$ and see what happens.</p>
+
+    <a class="marker" href="#section-3.2.2" id="section-3.2.2"><span>3.2.2</span></a>
+    <h4>The link to Hawkes processes</h4>
+
+    <p>
+      We have found that the SEIR model also has a close relationship to the HawkesN process. However, for the expectation
+      of the conditional intensity $\lambda_t^{SEIR}$ to match that of a HawkesN process, the kernel of the HawkesN process
+      must not be the exponential kernel, but rather the <em>hypoexponential</em> kernel or the <em>Erlang</em> kernel. The
+      conditional intensity with a hypoexponential kernel looks like
+      \begin{align}
+      \lambda_t
+      = \left(
+          1 - \frac{N_t}{N}
+        \right)
+        \sum_{t_j &lt; t}
+          \kappa \frac{\theta \sigma}{\theta - \sigma}
+          \left(
+            \text{e}^{-\sigma (t-t_j)} - \text{e}^{-\theta (t-t_j)}
+          \right),
+      \end{align}
+      where everything that follows the scale parameter $\kappa$ is the density of a hypoexponential distribution.</p>
+
+    <p>
+      You may notice that in case of $\sigma = \theta$ this formula does not work, as we would divide by zero. We
+      have shown that in this case the link between SEIR and HawkesN is established with the Erlang kernel, which leads to
+      the conditional intensity
+      \begin{align}
+      \lambda_t
+      = \left(
+          1 - \frac{N_t}{N}
+        \right)
+        \sum_{t_j &lt; t}
+          \kappa \theta^2
+          (t-t_j)
+          \text{e}^{-\theta (t-t_j)}
+      .
+      \end{align}</p>
+
+    <p>
+      How do these formulas differ from the conditional intensity with an exponential kernel? Have a look at the
+      following chart. You can select a sequence of event times below the chart and the plot will update accordingly.
+      <!-- The following is not possible anymore:
+      To
+      highlight the conditional intensity with a specific kernel, just click on the corresponding label in the legend.
+      (To select multiple kernels, hold the shift key while clicking.)
+      -->
+      </p>
+
+    <!-- Alternative way of adding the conditional intensity plot.
+    <p>
+      <div id="conditional-intensities"></div>
+      <script>
+        const spec = "img/conditional_intensities.json";
+        vegaEmbed("#conditional-intensities", spec)
+          // result.view provides access to the Vega View API
+          .then(result => console.log(result))
+          .catch(console.warn);
+      </script>
+    </p>
+    -->
+
+    <div id="altair-viz-5d9eef48d2044104a65149e449c95ff1"></div>
+    <script type="text/javascript">
+      (function(spec, embedOpt){
+        let outputDiv = document.currentScript.previousElementSibling;
+        if (outputDiv.id !== "altair-viz-5d9eef48d2044104a65149e449c95ff1") {
+          outputDiv = document.getElementById("altair-viz-5d9eef48d2044104a65149e449c95ff1");
+        }
+        const paths = {
+          "vega": "https://cdn.jsdelivr.net/npm//vega@5?noext",
+          "vega-lib": "https://cdn.jsdelivr.net/npm//vega-lib?noext",
+          "vega-lite": "https://cdn.jsdelivr.net/npm//vega-lite@4.8.1?noext",
+          "vega-embed": "https://cdn.jsdelivr.net/npm//vega-embed@6?noext",
+        };
+
+        function loadScript(lib) {
+          return new Promise(function(resolve, reject) {
+            var s = document.createElement('script');
+            s.src = paths[lib];
+            s.async = true;
+            s.onload = () => resolve(paths[lib]);
+            s.onerror = () => reject(`Error loading script: ${paths[lib]}`);
+            document.getElementsByTagName("head")[0].appendChild(s);
+          });
+        }
+
+        function showError(err) {
+          outputDiv.innerHTML = `<div class="error" style="color:red;">${err}</div>`;
+          throw err;
+        }
+
+        function displayChart(vegaEmbed) {
+          vegaEmbed(outputDiv, spec, embedOpt)
+            .catch(err => showError(`Javascript Error: ${err.message}<br>This usually means there's a typo in your chart specification. See the javascript console for the full traceback.`));
+        }
+
+        if(typeof define === "function" && define.amd) {
+          requirejs.config({paths});
+          require(["vega-embed"], displayChart, err => showError(`Error loading script: ${err.message}`));
+        } else if (typeof vegaEmbed === "function") {
+          displayChart(vegaEmbed);
+        } else {
+          loadScript("vega")
+            .then(() => loadScript("vega-lite"))
+            .then(() => loadScript("vega-embed"))
+            .catch(showError)
+            .then(() => displayChart(vegaEmbed));
+        }
+      })({"config": {"view": {"continuousWidth": 400, "continuousHeight": 300}}, "data": {"url": "https://raw.githubusercontent.com/yogabonito/blog/master/_notebooks/fig/conditional_intensities.json"}, "mark": "line", "encoding": {"color": {"type": "nominal", "field": "kernel"}, "opacity": {"condition": {"value": 1, "selection": "selector007"}, "value": 0.2}, "tooltip": [{"type": "quantitative", "field": "t"}, {"type": "quantitative", "field": "\u03bb\u209c"}, {"type": "nominal", "field": "kernel"}], "x": {"type": "quantitative", "field": "t"}, "y": {"type": "quantitative", "field": "\u03bb\u209c", "scale": {"domain": [0, 3.5]}}}, "selection": {"selector007": {"type": "multi", "fields": ["kernel"], "bind": "legend"}, "event Sequence": {"type": "single", "fields": ["event sequence"], "bind": {"input": "radio", "options": ["{0}  ", "{0, 1, 2}  ", "{0, 1, 2, ..., 9}  "], "name": "Event times: "}, "init": {"event sequence": "{0, 1, 2}  "}}}, "transform": [{"filter": {"selection": "event Sequence"}}], "$schema": "https://vega.github.io/schema/vega-lite/v4.8.1.json"}, {"mode": "vega-lite"});
+    </script>
+
+    <p>
+      We can see that a high value of the parameter $\sigma$ leads to a conditional intensity that resembles that with
+      an exponential kernel. That is because the hypoexponential kernel converges to the exponential one – a property
+      inherited from the densities of the hypoexponential and the exponential distribution:
+    \begin{align}
+    \lim_{\sigma \to \infty}
+    \frac{\theta \sigma}{\theta - \sigma}
+        \left(
+          \text{e}^{-\sigma (t-t_j)} - \text{e}^{-\theta (t-t_j)}
+        \right)
+    = \theta \text{e}^{-\theta (t - t_j)}.
+    \end{align}</p>
+    <p>
+      The same relationship exists between the SEIR model and the SIR model. When $\sigma$ goes to infinity, the time
+    spent in compartment E goes to zero, thus eliminating the need for this compartment.</p>
+
+    <p>
+      Now, let&apos;s have a look at smaller values of $\sigma$. They lead to a large delay with which the conditional
+      intensity increases. In the SEIR model a lower $\sigma$ means that people spend more time in compartment E where
+      they are not yet able to infect others. Thus, an infection does not immediately increase the probability of
+      further infections but only does so with some delay.</p>
+
+    <p>
+      If we select the event sequence $\{0, 1, 2, \ldots, 9\}$ below the chart, we can see that the conditional
+      intensity drops to zero at $t=9$. This is because in this example we assumed a population of only ten people.
+      At $t=9$, the $10^{\text{th}}$ event occurs, so the HawkesN factor in the conditional intensity becomes
+      $(1 - 10 / 10) = 0$.</p>
+    <p>
+      In an S(E)IR model, this $10^{\text{th}}$ infection event has the same effect. As soon as everybody left the
+      group of susceptibles, there is nobody left who can get infected.</p>
+
+    <p>
+      The event sequence with ten events nicely reflects how infections can have an increasing effect on the
+      conditional intensity at first. However, we can also see that the last two events decrease $\lambda_t$ – just as
+      discussed above when we defined the HawkesN factor. Note that this decreasing effect eventually prevails
+      irrespective of the kernel function used.</p>
+
+    <p class="note">
+      <span class="glyphicon glyphicon-info-sign"></span> <span class="info-box-start">Note:</span> The link between the
+      SEIR model and HawkesN processes can be used in the same way as the link found by Rizoiu et al., which means that
+      the equations \eqref{eq:translate-beta} and \eqref{eq:translate-gamma} remain valid.
+    </p>
+
+
+    <a class="marker" href="#section-4" id="section-4"><span>4</span></a>
+    <h2>Summary &amp; Discussion</h2>
+    <p>
+      In this blog post we have briefly presented the link between the SEIR model and Hawkes processes, which can be
+      seen as a generalization of Rizoiu et al.&apos;s work. This means, that now this link can be used when modeling
+      diseases that feature a latent period, during which infected people are not infectious.</p>
+
+    <p>
+      This, however, does not imply that the SEIR model is suitable for every disease and one has to keep in mind that
+      the latent period is not necessarily the same as the incubation period. This distinction is crucial for many
+      diseases (e.g., Covid-19) and can complicate the the application of the SEIR model.</p>
+
+    <p>
+      Nonetheless, even in the case of Covid-19 there are works showing the application of the SEIR model. To this end,
+      sometimes the model is adapted. One such adjustment can be the incorporation of quarantine measures.</p>
+
+    <p>
+     Further generalizations of the link between SEIR and HawkesN are possible and we will continue our research on this
+     topic in order to offer tools related to Hawkes-processes to a wider range of compartmental epidemic models.</p>
+
+  </d-article>
+
+  <d-appendix>
+
+    <h3>Contributions</h3>
+    <p>Some text describing who did what.</p>
+    <h3>Reviewers</h3>
+    <p>Some text with links describing who reviewed the article.</p>
+
+    <d-bibliography src="bibliography.bib"></d-bibliography>
+  </d-appendix>
+
+  <distill-footer></distill-footer>
+
+</body>

@@ -1,0 +1,83 @@
+.note {
+	background-color: hsl(210, 100%, 93%);
+	border-left: solid hsl(210, 33%, 67%) 1px;
+	padding: 1em 1.5em 1em 1.5em;
+	color: hsla(0, 0%, 0%, 0.67);
+}
+
+.note p {
+	margin-bottom: 0;
+}
+
+
+.important {
+	background-color: hsl(53, 100%, 93%);
+	border-left: solid hsl(53, 33%, 67%) 1px;
+	padding: 1em 1.5em 1em 1.5em;
+	color: hsla(0, 0%, 0%, 0.67);
+}
+
+.important p {
+	margin-bottom: 0;
+}
+
+
+.info-box-start {
+  font-weight: bold;
+}
+
+
+
+
+input[type=range]{
+  background: transparent; /* Otherwise white in Chrome */
+  width: 30%;
+  display: inline;
+  margin: 0 .5em 0 .5em;
+}
+
+
+input[type=radio]{
+  margin-left: 15px;
+  margin-right: 2px;
+}
+
+/* taken from the article about Beyes Optimization */
+.collapsible {
+  background-color: hsla(206, 95%, 20%, 0.2);
+  cursor: pointer;
+  padding: 1em;
+  border: none;
+  text-align: left;
+  outline: none;
+}
+
+.active, .collapsible:hover {
+  transition: max-height 0.2s ease-out;
+  /* background-color: #acc2c2; */
+}
+
+.collapsible {
+  display: flex;
+  justify-content: space-between;
+  align-content: center;
+  border-radius: 4px;
+}
+
+.collapsible.active {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.collapsible .collapsible-indicator::after {
+  content: "+"
+}
+
+.collapsible.active .collapsible-indicator::after {
+  content: "-"
+}
+
+.collapsible h5 {
+  margin: 0;
+  line-height: inherit;
+}

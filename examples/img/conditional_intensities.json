@@ -1,0 +1,88 @@
+{
+  "config": {
+    "view": {
+      "continuousWidth": 400,
+      "continuousHeight": 300
+    }
+  },
+  "data": {
+    "url": "https://raw.githubusercontent.com/yogabonito/blog/master/_notebooks/fig/conditional_intensities.json"
+  },
+  "mark": "line",
+  "encoding": {
+    "color": {
+      "type": "nominal",
+      "field": "kernel"
+    },
+    "opacity": {
+      "condition": {
+        "value": 1,
+        "selection": "selector014"
+      },
+      "value": 0.2
+    },
+    "tooltip": [
+      {
+        "type": "quantitative",
+        "field": "t"
+      },
+      {
+        "type": "quantitative",
+        "field": "λₜ"
+      },
+      {
+        "type": "nominal",
+        "field": "kernel"
+      }
+    ],
+    "x": {
+      "type": "quantitative",
+      "field": "t"
+    },
+    "y": {
+      "type": "quantitative",
+      "field": "λₜ",
+      "scale": {
+        "domain": [
+          0,
+          3.5
+        ]
+      }
+    }
+  },
+  "selection": {
+    "selector014": {
+      "type": "multi",
+      "fields": [
+        "kernel"
+      ],
+      "bind": "legend"
+    },
+    "event Sequence": {
+      "type": "single",
+      "fields": [
+        "event sequence"
+      ],
+      "bind": {
+        "input": "radio",
+        "options": [
+          "{0}  ",
+          "{0, 1, 2}  ",
+          "{0, 1, 2, ..., 9}  "
+        ],
+        "name": "Event times: "
+      },
+      "init": {
+        "event sequence": "{0, 1, 2}  "
+      }
+    }
+  },
+  "transform": [
+    {
+      "filter": {
+        "selection": "event Sequence"
+      }
+    }
+  ],
+  "$schema": "https://vega.github.io/schema/vega-lite/v4.8.1.json"
+}
