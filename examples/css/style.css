@@ -57,6 +57,16 @@ input[type=radio]{
   /* background-color: #acc2c2; */
 }
 
+d-article .content {
+  padding: .3em 1em;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.2s ease-out;
+  /*background-color: #e1f2f2;*/
+  /*border-style: ridge;*/
+  border-color: hsla(206, 95%, 20%, 0.2);
+}
+
 .collapsible {
   display: flex;
   justify-content: space-between;
